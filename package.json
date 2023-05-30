@@ -17,6 +17,6 @@
   },
 
   "devDependencies": {
-    "google-closure-compiler": "^20190121.0.0"
+    "google-closure-compiler": "^20230502.0.0"
   }
 }
