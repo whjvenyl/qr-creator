@@ -8,17 +8,19 @@ Try out the [demo](https://nimiq.github.io/qr-creator/demo)!
 ## Origin
 This library is a trimmed down version of [Lars Jung's jQuery.qrcode library](https://larsjung.de/jquery-qrcode/). Our library is however not based on jQuery anymore and doesnt make use of it. Lars Jung's library itself is based on this [QR code Generator](https://github.com/kazuhikoarase/qrcode-generator).
 
+Changes for SSR by whjvenyl.
+
 All parts are licensed under the MIT License.
 
 ## Installation
 
 To install via npm:
 ```bash
-npm install --save qr-creator
+npm install --save qr-creator-ssr
 ```
 To install via yarn:
 ```bash
-yarn add qr-creator
+yarn add qr-creator-ssr
 ```
 Or use a cdn like [jsdelivr](http://www.jsdelivr.com/package/npm/qr-creator) or
 [unpkg](https://unpkg.com/browse/qr-creator@1.0.0/) (see [usage](#usage)).
