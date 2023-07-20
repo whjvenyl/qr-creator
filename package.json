@@ -1,10 +1,10 @@
 {
-  "name": "qr-creator",
+  "name": "qr-creator-ssr",
   "version": "1.0.0",
   "description": "Lightweight QR code generator for stylish QR codes",
   "keywords": ["qr", "qr code", "qr creator", "qr encoder", "stylish qr", "beautiful qr", "lightweight", "small"],
-  "repository": "git@github.com:nimiq/qr-creator.git",
-  "author": "Nimiq (www.nimiq.com)",
+  "repository": "git@github.com:whjvenyl/qr-creator-ssr.git",
+  "author": "Nimiq (www.nimiq.com) / SSR changes by whjvenyl",
   "license": "MIT",
 
   "main": "dist/qr-creator.min.js",
