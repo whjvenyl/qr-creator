@@ -54,43 +54,77 @@ To use the non-module version:
 Call the QrCreator API with a configuration object and a DOM element or canvas to render the QR code into:
 
 ```javascript
-QrCreator.render(
-  {
+QrCreator.render({
     text: 'some text',
-    radius: 0.5, // 0.0 to 0.5
+    minVersion: 1, // 1 to 40
+    maxVersion: 40,
     ecLevel: 'H', // L, M, Q, H
-    fill: '#536DFE', // foreground color
-    background: null, // color or null for transparent
-    size: 128 // in pixels
-  },
-  document.querySelector('#qr-code')
-);
+    left: 0, // offset in pixels
+    top: 0,
+    size: 200, // size in pixels
+    fill: '#000000', // foreground color or gradient
+    background: null, // null for transparent background
+    radius: 0.5, // corner radius relative to module width: 0.0 .. 0.5
+    quiet: 0, // quiet zone in modules
+    cornerColor: '#FF0000', // color for corner modules
+    icon: { // optional
+        src: 'path/to/icon.png',
+        width: 40, // optional, default is size * 0.2
+        height: 40, // optional, default is size * 0.2
+        crossOrigin: 'anonymous' // optional
+    }
+}, document.querySelector('#qr-code'));
 ```
 
-| Attribute  | Options           | Default | Description                                                                                                                                                                                                                                                        |
-| ---------- | ----------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| text       | String            | ""      | Any kind of text, also links, email addresses, any thing. The library will figure out the size of the QR code to fit all the text inside.                                                                                                                          |
-| radius     | 0 .. 0.5          | 0.5     | Defines how round the blocks should be. Numbers from 0 (squares) to 0.5 (maximum round) are supported.                                                                                                                                                             |
-| ecLevel    | L, M, Q, H        | L       | Means "Error correction levels". The four values L, M, Q, and H will use %7, 15%, 25%, and 30% of the QR code for error correction respectively. So on one hand the code will get bigger but chances are also higher that it will be read without errors later on. |
-| fill       | color or gradient | #000000 | What color you want your QR code to be. Use the demo to try different colors.                                                                                                                                                                                      |
-| background | color code        | null    | The background color or null for transparent background.                                                                                                                                                                                                           |
-| size       | int               | 200     | The total size of the final QR code in pixels - it will be a square.                                                                                                                                                                                               |
+## Options
 
-If you want to fill the QR code with a gradient, use the following format:
+| Option      | Type             | Default  | Description                                                                                                                                                                                                                                                        |
+|-------------|------------------|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| text        | string          | 'no text'| The content to encode in the QR code                                                                                                                                                                                                                                |
+| minVersion  | number          | 1        | Minimum QR code version (1-40)                                                                                                                                                                                                                                      |
+| maxVersion  | number          | 40       | Maximum QR code version (1-40)                                                                                                                                                                                                                                      |
+| ecLevel     | string          | 'L'      | Error correction level ('L': 7%, 'M': 15%, 'Q': 25%, 'H': 30%)                                                                                                                                                                                                      |
+| left        | number          | 0        | Left offset in pixels                                                                                                                                                                                                                                               |
+| top         | number          | 0        | Top offset in pixels                                                                                                                                                                                                                                                |
+| size        | number          | 200      | Size of the QR code in pixels                                                                                                                                                                                                                                       |
+| fill        | string/object   | '#000'   | Color or gradient for QR code modules                                                                                                                                                                                                                               |
+| background  | string          | null     | Background color (null for transparent)                                                                                                                                                                                                                             |
+| radius      | number          | 0.5      | Corner radius of modules (0.0-0.5)                                                                                                                                                                                                                                  |
+| quiet       | number          | 0        | Quiet zone size in modules                                                                                                                                                                                                                                          |
+| cornerColor | string          | null     | Color for corner modules (null uses fill color)                                                                                                                                                                                                                     |
+| icon        | object          | null     | Icon configuration object 
 
-```js
-{
-    type: 'radial-gradient', // or 'linear-gradient'
-    position: [ ... ],
+### Gradient Fill
+
+For gradient fills, use the following format:
+
+```javascript
+fill: {
+    type: 'linear-gradient', // or 'radial-gradient'
+    position: [x0, y0, x1, y1], // relative coordinates 0-1
     colorStops: [
-        [ offset0, color0 ],
-        [ offset1, color1 ],
-        ...
+        [0, '#000000'],
+        [1, '#ffffff']
     ]
 }
 ```
 
 Where the position is specified as in [createLinearGradient](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createLinearGradient) / [createRadialGradient](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/createRadialGradient). However, each value is relative to the QR code size, i.e. will be multiplied by that size to yield the absolute position.
+
+### Icon Options
+
+The `icon` object accepts the following properties:
+
+```javascript
+icon: {
+    src: string,           // URL of the icon image
+    width: number,         // Width in pixels (optional)
+    height: number,        // Height in pixels (optional)
+    crossOrigin: string    // CORS setting (optional)
+}
+```
+
+Note: Icon size should not exceed 30% of the QR code size for reliable scanning.
 
 ## Trimmed down to be low weight
 
