@@ -66,4 +66,7 @@ declare namespace QrCreator {
   export type ColorStop = [number, string];
 }
 
+// Export both the class and its static methods
+export const render: typeof QrCreator.render;
+export { QrCreator };
 export default QrCreator;
