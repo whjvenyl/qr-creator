@@ -3,7 +3,7 @@
 // Definitions by: Nimiq <www.nimiq.com>
 
 declare class QrCreator {
-  public static render(config: QrCreator.Config, $element: HTMLElement): void;
+  public static render(config: QrCreator.Config, $element: HTMLElement): Promise<void>;
 }
 
 // exported types
@@ -37,12 +37,16 @@ declare namespace QrCreator {
     /** quiet zone in modules */
     quiet?: number;
 
+    /** Color for corner modules, null means same as fill */
+    cornerColor?: string | null;
+
     /** center icon configuration */
     icon?: {
         src: string | null;     // URL or Data URL of the icon
         width?: number;         // Optional width in pixels
         height?: number;        // Optional height in pixels
-        };
+        crossOrigin?: string;   // Optional crossOrigin setting
+    };
   }
 
   export type ErrorCorrectionLevel = 'L' | 'M' | 'H' | 'Q';
