@@ -78,19 +78,26 @@ globalThis['QrCreator'] = QrCreator;
         x: settings.left + (settings.size - iconSize.w) / 2,
         y: settings.top + (settings.size - iconSize.h) / 2
       };
+
+      // Clear the icon area first
+      context.clearRect(iconPos.x, iconPos.y, iconSize.w, iconSize.h);
   
       const img = new Image();
       if (settings.icon.crossOrigin) {
         img.crossOrigin = settings.icon.crossOrigin;
       }
-      img.src = settings.icon.src;
       
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         img.onload = () => {
-          context.drawImage(img, iconPos.x, iconPos.y, iconSize.w, iconSize.h);
-          resolve();
+          try {
+            context.drawImage(img, iconPos.x, iconPos.y, iconSize.w, iconSize.h);
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
         };
-        img.onerror = resolve; // Continue if image fails to load
+        img.onerror = () => reject(new Error('Failed to load icon image'));
+        img.src = settings.icon.src;
       });
     }
     return Promise.resolve();

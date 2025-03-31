@@ -50,13 +50,67 @@
     <script type="module">
       import QrCreator from '../src/qr-creator.js';
       let availableSettings = ['text', 'radius', 'ecLevel', 'fill', 'background', 'size', 'icon', 'cornerColor'];
+      let currentRender = 0;
+
+      async function renderQrCode() {
+        const renderID = ++currentRender;
+        let time = new Date(),
+          container = document.querySelector('#qr-code'),
+          settings = readSettings();
+
+        // Clear the container
+        container.innerHTML = '';
+        
+        try {
+          // Create a new canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = settings.size;
+          canvas.height = settings.size;
+          container.appendChild(canvas);
+
+          // Render the QR code
+          await QrCreator.render(settings, canvas);
+          
+          // Check if this is still the most recent render
+          if (renderID !== currentRender) {
+            return; // Abandon this render if it's not the most recent
+          }
+
+          // Save current settings for cleanup purposes
+          container.dataset.settings = JSON.stringify(settings);
+          
+          document.querySelector('#stats').innerText = 'Rendered in ' + (new Date()-time) + 'ms';
+          document.querySelector('#json').innerText = JSON.stringify(settings, null, 2);
+        } catch (error) {
+          console.error('Failed to render QR code:', error);
+          document.querySelector('#stats').innerText = 'Error: ' + error.message;
+        }
+      }
 
       function readSettings() {
         let settings = {};
+        
+        // Get size first as it's needed for icon sizing
+        settings.size = parseInt(document.querySelector('#size').value);
+
+        // Handle other settings
         for (let setting of availableSettings) {
+          if (setting === 'size') continue; // Already handled
+
           if (setting === 'icon') {
             const iconInput = document.querySelector('#icon');
             if (iconInput.files && iconInput.files[0]) {
+              // Revoke any existing object URL first
+              const prevSettings = document.querySelector('#qr-code').dataset.settings;
+              if (prevSettings) {
+                try {
+                  const parsed = JSON.parse(prevSettings);
+                  if (parsed.icon?.src?.startsWith('blob:')) {
+                    URL.revokeObjectURL(parsed.icon.src);
+                  }
+                } catch(e) {}
+              }
+              
               settings.icon = {
                 src: URL.createObjectURL(iconInput.files[0]),
                 width: settings.size * 0.2,
@@ -64,7 +118,6 @@
               };
             }
           } else if (setting === 'cornerColor') {
-            // Only include cornerColor if the checkbox is checked
             if (document.querySelector('#useCustomCorner').checked) {
               settings.cornerColor = document.querySelector('#cornerColor').value;
             }
@@ -80,48 +133,29 @@
         return settings;
       }
 
-      // Add event listeners for the corner color controls
-      document.querySelector('#useCustomCorner').addEventListener('change', function(e) {
-        const cornerColorInput = document.querySelector('#cornerColor');
-        cornerColorInput.disabled = !e.target.checked;
-        renderQrCode();
-      });
-
-      document.querySelector('#cornerColor').addEventListener('change', renderQrCode);
-
-      async function renderQrCode() {
-        let time = new Date(),
-          container = document.querySelector('#qr-code'),
-          settings = readSettings();
-
-        // Cleanup previous object URL if it exists
-        const prevSettings = container.dataset.settings;
-        if (prevSettings) {
-          try {
-            const parsed = JSON.parse(prevSettings);
-            if (parsed.icon && parsed.icon.src && parsed.icon.src.startsWith('blob:')) {
-              URL.revokeObjectURL(parsed.icon.src);
-            }
-          } catch(e) {}
-        }
-
-        container.innerHTML = '';
-        
-        try {
-          await QrCreator.render(settings, container);
-          container.dataset.settings = JSON.stringify(settings);
-          document.querySelector('#stats').innerText = 'Rendered in ' + (new Date()-time) + 'ms';
-          document.querySelector('#json').innerText = JSON.stringify(settings, null, 2);
-        } catch (error) {
-          console.error('Failed to render QR code:', error);
-          document.querySelector('#stats').innerText = 'Error rendering QR code';
-        }
+      // Debounce function to prevent too many renders
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
       }
 
-      for (let input of document.querySelectorAll('input, select')) {
-        input.addEventListener('change', () => {
-          renderQrCode().catch(console.error);
-        });
+      // Event listeners with debouncing
+      const debouncedRender = debounce(() => renderQrCode(), 100);
+
+      document.querySelector('#useCustomCorner').addEventListener('change', debouncedRender);
+      document.querySelector('#icon').addEventListener('change', debouncedRender);
+      document.querySelector('#cornerColor').addEventListener('change', debouncedRender);
+
+      // For all other inputs
+      for (let input of document.querySelectorAll('input:not(#icon):not(#cornerColor), select')) {
+        input.addEventListener('change', debouncedRender);
       }
 
       // Initial render
