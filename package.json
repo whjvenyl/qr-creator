@@ -1,6 +1,6 @@
 {
   "name": "qr-creator-ssr",
-  "version": "1.1.2",
+  "version": "1.1.3",
   "description": "Lightweight QR code generator for stylish QR codes",
   "keywords": [
     "qr",
@@ -32,7 +32,7 @@
     }
   },
   "scripts": {
-    "build": "google-closure-compiler --js=src/qr-creator.js --js_output_file=dist/qr-creator.min.js --language_in=ECMASCRIPT_2017 --language_out=ECMASCRIPT_2017 --rewrite_polyfills=false --compilation_level=ADVANCED --create_source_map=dist/qr-creator.min.js.map && cp dist/qr-creator.min.js dist/qr-creator.es6.min.js && printf '//# sourceMappingURL=qr-creator.min.js.map\n' >> dist/qr-creator.min.js && printf 'export default QrCreator;\n//# sourceMappingURL=qr-creator.min.js.map\n' >> dist/qr-creator.es6.min.js",
+    "build": "google-closure-compiler --js=src/qr-creator.js --js_output_file=dist/qr-creator.min.js --language_in=ECMASCRIPT_2017 --language_out=ECMASCRIPT_2017 --rewrite_polyfills=false --compilation_level=ADVANCED --create_source_map=dist/qr-creator.min.js.map --rename_prefix_namespace='qr' --jscomp_off=checkVars --property_renaming_report='dist/renaming.txt' --js_module_root='src' --output_wrapper='(function(){%output%})();' --externs='externs.js' && cp dist/qr-creator.min.js dist/qr-creator.es6.min.js && printf '//# sourceMappingURL=qr-creator.min.js.map\n' >> dist/qr-creator.min.js && printf 'export default QrCreator;\n//# sourceMappingURL=qr-creator.min.js.map\n' >> dist/qr-creator.es6.min.js",
     "prettier": "prettier --write --log-level=warn ."
   },
   "devDependencies": {

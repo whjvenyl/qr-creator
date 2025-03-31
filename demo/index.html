@@ -154,6 +154,12 @@
       document.querySelector('#icon').addEventListener('change', debouncedRender);
       document.querySelector('#cornerColor').addEventListener('change', debouncedRender);
 
+      document.querySelector('#useCustomCorner').addEventListener('change', function(e) {
+        const cornerColorInput = document.querySelector('#cornerColor');
+        cornerColorInput.disabled = !e.target.checked;
+        debouncedRender();
+      });
+
       // For all other inputs
       for (let input of document.querySelectorAll('input:not(#icon):not(#cornerColor), select')) {
         input.addEventListener('change', debouncedRender);
