@@ -3,8 +3,8 @@ let qrCodeGenerator = null;
 
 // Library interface
 export default class QrCreator {
-  static render(config, $element) {
-    qrCodeGenerator(config, $element);
+  static async render(config, $element) {
+    await qrCodeGenerator(config, $element);
   }
 }
 // avoid that closure compiler strips these away
@@ -66,6 +66,36 @@ globalThis['QrCreator'] = QrCreator;
     }
   }
 
+  function drawIcon(qr, context, settings) {
+    if (settings.icon && settings.icon.src) {
+      const maxSize = settings.size * 0.3; // Maximum 30% of QR code size
+      const iconSize = {
+        w: Math.min(settings.icon.width || settings.size * 0.2, maxSize),
+        h: Math.min(settings.icon.height || settings.size * 0.2, maxSize)
+      };
+      
+      const iconPos = {
+        x: settings.left + (settings.size - iconSize.w) / 2,
+        y: settings.top + (settings.size - iconSize.h) / 2
+      };
+  
+      const img = new Image();
+      if (settings.icon.crossOrigin) {
+        img.crossOrigin = settings.icon.crossOrigin;
+      }
+      img.src = settings.icon.src;
+      
+      return new Promise((resolve) => {
+        img.onload = () => {
+          context.drawImage(img, iconPos.x, iconPos.y, iconSize.w, iconSize.h);
+          resolve();
+        };
+        img.onerror = resolve; // Continue if image fails to load
+      });
+    }
+    return Promise.resolve();
+  }
+
   // used when center is filled
   function drawModuleRoundedDark(ctx, l, t, r, b, rad, nw, ne, se, sw) {
     //let moveTo = (x, y) => ctx.moveTo(Math.floor(x), Math.floor(y));
@@ -123,12 +153,12 @@ globalThis['QrCreator'] = QrCreator;
       south = isDark(rowB, col),
       southwest = isDark(rowB, colL),
       west = isDark(row, colL);
-
+  
     left = Math.round(left);
     top = Math.round(top);
     right = Math.round(right);
     bottom = Math.round(bottom);
-
+  
     if (center) {
       drawModuleRoundedDark(
         context,
@@ -163,50 +193,119 @@ globalThis['QrCreator'] = QrCreator;
       moduleSize = settings.size / moduleCount,
       row,
       col;
-
+  
+    // Set the main fill style
+    setFill(context, settings);
+  
+    // If no special corner color, draw everything at once
+    if (!settings.cornerColor) {
+      context.beginPath();
+      for (row = 0; row < moduleCount; row += 1) {
+        for (col = 0; col < moduleCount; col += 1) {
+          var l = settings.left + col * moduleSize,
+            t = settings.top + row * moduleSize,
+            w = moduleSize;
+  
+          drawModuleRounded(qr, context, settings, l, t, w, row, col);
+        }
+      }
+      context.fill();
+      return;
+    }
+  
+    // If we have a corner color, draw in two passes
+    
+    // First pass: non-corner modules
     context.beginPath();
     for (row = 0; row < moduleCount; row += 1) {
       for (col = 0; col < moduleCount; col += 1) {
+        // Skip corner modules
+        if ((row < 7 && col < 7) || // Top-left corner
+            (row < 7 && col >= moduleCount - 7) || // Top-right corner
+            (row >= moduleCount - 7 && col < 7)) { // Bottom-left corner
+          continue;
+        }
+  
         var l = settings.left + col * moduleSize,
           t = settings.top + row * moduleSize,
           w = moduleSize;
-
+  
         drawModuleRounded(qr, context, settings, l, t, w, row, col);
       }
     }
-
-    setFill(context, settings);
     context.fill();
+  
+    // Second pass: corner modules with different color
+    const originalFillStyle = context.fillStyle;
+    context.fillStyle = settings.cornerColor;
+    context.beginPath();
+    
+    // Draw corner modules
+    for (row = 0; row < moduleCount; row += 1) {
+      for (col = 0; col < moduleCount; col += 1) {
+        // Only draw corner modules
+        if (!((row < 7 && col < 7) || // Top-left corner
+            (row < 7 && col >= moduleCount - 7) || // Top-right corner
+            (row >= moduleCount - 7 && col < 7))) { // Bottom-left corner
+          continue;
+        }
+  
+        var l = settings.left + col * moduleSize,
+          t = settings.top + row * moduleSize,
+          w = moduleSize;
+  
+        drawModuleRounded(qr, context, settings, l, t, w, row, col);
+      }
+    }
+    context.fill();
+  
+    // Restore original fillStyle
+    context.fillStyle = originalFillStyle;
   }
 
   function setFill(context, settings) {
-    const fill = settings.fill;
-    if (typeof fill === 'string') {
-      // solid color
-      context.fillStyle = fill;
-      return;
-    }
-    const type = fill['type'],
-      position = fill['position'],
-      colorStops = fill['colorStops'];
-    let gradient;
-    const absolutePosition = position.map(coordinate => Math.round(coordinate * settings.size));
-    if (type === 'linear-gradient') {
-      gradient = context.createLinearGradient.apply(context, absolutePosition);
-    } else if (type === 'radial-gradient') {
-      gradient = context.createRadialGradient.apply(context, absolutePosition);
-    } else {
-      throw new Error('Unsupported fill');
-    }
-    colorStops.forEach(([offset, color]) => {
-      gradient.addColorStop(offset, color);
-    });
-    context.fillStyle = gradient;
+  // Handle regular fill
+  const fill = settings.fill;
+  if (typeof fill === 'string') {
+    context.fillStyle = fill;
+    return;
+  }
+
+  // Handle gradient fill
+  const type = fill['type'],
+    position = fill['position'],
+    colorStops = fill['colorStops'];
+  let gradient;
+
+  const absolutePosition = position.map(coordinate => 
+    Math.round(coordinate * settings.size)
+  );
+
+  if (type === 'linear-gradient') {
+    gradient = context.createLinearGradient.apply(context, absolutePosition);
+  } else if (type === 'radial-gradient') {
+    gradient = context.createRadialGradient.apply(context, absolutePosition);
+  } else {
+    throw new Error('Unsupported fill');
+  }
+
+  colorStops.forEach(([offset, color]) => {
+    gradient.addColorStop(offset, color);
+  });
+  
+  context.fillStyle = gradient;
   }
 
   // Draws QR code to the given `canvas` and returns it.
-  function drawOnCanvas(canvas, settings) {
-    var qr = createMinQRCode(settings.text, settings.ecLevel, settings.minVersion, settings.maxVersion, settings.quiet);
+  async function drawOnCanvas(canvas, settings) {
+    var qr = createMinQRCode(
+      settings.text, 
+      settings.ecLevel, 
+      settings.minVersion, 
+      settings.maxVersion, 
+      settings.quiet
+    );
+    
     if (!qr) {
       return null;
     }
@@ -214,13 +313,15 @@ globalThis['QrCreator'] = QrCreator;
     var context = canvas.getContext('2d');
 
     drawBackground(qr, context, settings);
+    setFill(context, settings); // Set the initial fill style
     drawModules(qr, context, settings);
+    await drawIcon(qr, context, settings);
 
     return canvas;
   }
 
   // Returns a `canvas` element representing the QR code for the given settings.
-  function createCanvas(settings) {
+  async function createCanvas(settings) {
     var $canvas = document.createElement('canvas');
     $canvas.width = settings.size;
     $canvas.height = settings.size;
@@ -262,15 +363,21 @@ globalThis['QrCreator'] = QrCreator;
     // quiet zone in modules
     quiet: 0,
 
+    // Color for corner modules, null means same as fill
+    cornerColor: null, 
+
     // center icon
     icon: {
-      src: ''
+      src: null,     // URL or Data URL of the icon
+      width: null,   // Optional width in pixels
+      height: null,   // Optional height in pixels
+      crossOrigin: null // Optional crossOrigin setting
     }
   };
 
   // // Register the plugin
   // // -------------------
-  qrCodeGenerator = function (options, $element) {
+  qrCodeGenerator = async function (options, $element) {
     var settings = {};
     Object.assign(settings, defaults, options);
     // map real names to minifyable properties used by closure compiler
@@ -293,10 +400,13 @@ globalThis['QrCreator'] = QrCreator;
         $element.height = settings.size;
       }
       $element.getContext('2d').clearRect(0, 0, $element.width, $element.height);
-      drawOnCanvas($element, settings);
+      return drawOnCanvas($element, settings);
     } else {
-      const $canvas = createCanvas(settings);
-      $element.appendChild($canvas);
+      const $canvas = await createCanvas(settings);
+      if ($canvas) {
+        $element.appendChild($canvas);
+      }
+      return $canvas;
     }
   };
 })(
@@ -649,36 +759,11 @@ globalThis['QrCreator'] = QrCreator;
       // qrcode.stringToBytes
       //---------------------------------------------------------------------
 
-      // UTF-8 version
       qrcode.stringToBytes = function (s) {
-        // http://stackoverflow.com/questions/18729405/how-to-convert-utf8-string-to-byte-array
-        function toUTF8Array(str) {
-          var utf8 = [];
-          for (var i = 0; i < str.length; i++) {
-            var charcode = str.charCodeAt(i);
-            if (charcode < 0x80) utf8.push(charcode);
-            else if (charcode < 0x800) {
-              utf8.push(0xc0 | (charcode >> 6), 0x80 | (charcode & 0x3f));
-            } else if (charcode < 0xd800 || charcode >= 0xe000) {
-              utf8.push(0xe0 | (charcode >> 12), 0x80 | ((charcode >> 6) & 0x3f), 0x80 | (charcode & 0x3f));
-            }
-            // surrogate pair
-            else {
-              i++;
-              // UTF-16 encodes 0x10000-0x10FFFF by
-              // subtracting 0x10000 and splitting the
-              // 20 bits of 0x0-0xFFFFF into two halves
-              charcode = 0x10000 + (((charcode & 0x3ff) << 10) | (str.charCodeAt(i) & 0x3ff));
-              utf8.push(
-                0xf0 | (charcode >> 18),
-                0x80 | ((charcode >> 12) & 0x3f),
-                0x80 | ((charcode >> 6) & 0x3f),
-                0x80 | (charcode & 0x3f)
-              );
-            }
-          }
-          return utf8;
+        if (typeof TextEncoder !== 'undefined') {
+          return new TextEncoder().encode(s);
         }
+        // Fallback for older browsers
         return toUTF8Array(s);
       };
 
@@ -1319,7 +1404,7 @@ globalThis['QrCreator'] = QrCreator;
           [19, 148, 118, 6, 149, 119],
           [18, 75, 47, 31, 76, 48],
           [34, 54, 24, 34, 55, 25],
-          [20, 45, 15, 61, 46, 16]
+          [20, 45, 15, 61, 46, 15]
         ];
 
         var qrRSBlock = function (totalCount, dataCount) {
@@ -1391,6 +1476,9 @@ globalThis['QrCreator'] = QrCreator;
         };
 
         _this.put = function (num, length) {
+          if (length > 32) { // JavaScript bit operations are limited to 32 bits
+            throw new Error('Length too large for bit operations');
+          }
           for (var i = 0; i < length; i += 1) {
             _this.putBit(((num >>> (length - i - 1)) & 1) == 1);
           }

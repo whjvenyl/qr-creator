@@ -27,11 +27,19 @@
         ></label>
         <label>Color: <input id="fill" type="color" value="#0064a8" /></label>
         <div class="flex">
+          <label>Use custom corner color: 
+            <input id="useCustomCorner" type="checkbox" />
+          </label>
+          <label>Corner Color: 
+            <input id="cornerColor" type="color" value="#000000" disabled />
+          </label>
+        </div>
+        <div class="flex">
           <label>Background: <input id="background" type="color" /></label> or
           <input id="transparent" type="checkbox" checked /> transparent
         </div>
         <label>Size: <input id="size" type="range" value="250" step="10" min="20" max="1000" /></label>
-        <label>Center Image: <input type="file" id="icon" name="image" accept="image/png, image/jpeg" /></label>
+        <label>Center Icon: <input type="file" id="icon" accept="image/png, image/jpeg" /></label>
       </section>
       <section id="parameters">
         <label>Parameters:</label>
@@ -40,35 +48,84 @@
     </main>
     <link rel="stylesheet" href="./demo/style.css" />
     <script type="module">
-      import QrCreator from '../dist/qr-creator.es6.min.js';
-      let availableSettings = ['text', 'radius', 'ecLevel', 'fill', 'background', 'size'];
+      import QrCreator from '../src/qr-creator.js';
+      let availableSettings = ['text', 'radius', 'ecLevel', 'fill', 'background', 'size', 'icon', 'cornerColor'];
 
       function readSettings() {
-        let settings = {},
-          el;
+        let settings = {};
         for (let setting of availableSettings) {
-          settings[setting] = document.querySelector('#' + setting).value;
+          if (setting === 'icon') {
+            const iconInput = document.querySelector('#icon');
+            if (iconInput.files && iconInput.files[0]) {
+              settings.icon = {
+                src: URL.createObjectURL(iconInput.files[0]),
+                width: settings.size * 0.2,
+                height: settings.size * 0.2
+              };
+            }
+          } else if (setting === 'cornerColor') {
+            // Only include cornerColor if the checkbox is checked
+            if (document.querySelector('#useCustomCorner').checked) {
+              settings.cornerColor = document.querySelector('#cornerColor').value;
+            }
+          } else {
+            settings[setting] = document.querySelector('#' + setting).value;
+          }
         }
+
         if (document.querySelector('#transparent').checked) {
           settings.background = null;
         }
+
         return settings;
       }
 
-      function renderQrCode() {
+      // Add event listeners for the corner color controls
+      document.querySelector('#useCustomCorner').addEventListener('change', function(e) {
+        const cornerColorInput = document.querySelector('#cornerColor');
+        cornerColorInput.disabled = !e.target.checked;
+        renderQrCode();
+      });
+
+      document.querySelector('#cornerColor').addEventListener('change', renderQrCode);
+
+      async function renderQrCode() {
         let time = new Date(),
           container = document.querySelector('#qr-code'),
           settings = readSettings();
+
+        // Cleanup previous object URL if it exists
+        const prevSettings = container.dataset.settings;
+        if (prevSettings) {
+          try {
+            const parsed = JSON.parse(prevSettings);
+            if (parsed.icon && parsed.icon.src && parsed.icon.src.startsWith('blob:')) {
+              URL.revokeObjectURL(parsed.icon.src);
+            }
+          } catch(e) {}
+        }
+
         container.innerHTML = '';
-        QrCreator.render(settings, container);
-        document.querySelector('#stats').innerText = 'Rendered in ' + (new Date() - time) + 'ms';
-        document.querySelector('#json').innerText = JSON.stringify(settings, null, 2);
+        
+        try {
+          await QrCreator.render(settings, container);
+          container.dataset.settings = JSON.stringify(settings);
+          document.querySelector('#stats').innerText = 'Rendered in ' + (new Date()-time) + 'ms';
+          document.querySelector('#json').innerText = JSON.stringify(settings, null, 2);
+        } catch (error) {
+          console.error('Failed to render QR code:', error);
+          document.querySelector('#stats').innerText = 'Error rendering QR code';
+        }
       }
 
       for (let input of document.querySelectorAll('input, select')) {
-        input.addEventListener('change', renderQrCode);
+        input.addEventListener('change', () => {
+          renderQrCode().catch(console.error);
+        });
       }
-      renderQrCode();
+
+      // Initial render
+      renderQrCode().catch(console.error);
     </script>
   </body>
 </html>

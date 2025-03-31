@@ -38,3 +38,8 @@ input:not([type='checkbox']),
 select {
   display: block;
 }
+
+#cornerColor[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
